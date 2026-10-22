@@ -1,0 +1,421 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Shadow Catchers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column "observing log". Each mission is a sheet with a short briefing beside a live instrument screen.
+   Colour comes from the EHT brightness-temperature scale: instrument screens stay dark in both themes, the page around them follows the viewer. */
+:root{
+  --bg:#e9ecf1; --surface:#ffffff; --fg:#17131b; --muted:#5a5462; --line:#cdd1da;
+  --accent:#b23d0b; --accent-fg:#ffffff; --ok:#17744a; --bad:#b42318;
+  --screen:#0b0709; --screen-line:#2b2023; --screen-fg:#f4e9e1;
+  --e0:#5a0f08; --e1:#b3260e; --e2:#ef6a1a; --e3:#ffb347; --e4:#ffe9b0;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#140d11; --surface:#1e1519; --fg:#f6ece6; --muted:#b6a7a3; --line:#3b2c31;
+  --accent:#ff8a3d; --accent-fg:#1a0d06; --ok:#5fd39a; --bad:#ff7b6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#140d11; --surface:#1e1519; --fg:#f6ece6; --muted:#b6a7a3; --line:#3b2c31;
+  --accent:#ff8a3d; --accent-fg:#1a0d06; --ok:#5fd39a; --bad:#ff7b6b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--font-body);
+  padding-block:14px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--font-display);line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(2.6rem,9vw,4.6rem);font-weight:700}
+h2{font-size:clamp(1.6rem,4.6vw,2.2rem);font-weight:700}
+h3{font-size:1.25rem;font-weight:700}
+p{margin:0 0 .8em;max-width:62ch}
+a{color:var(--accent)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:500 12px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.brand{font:700 1.05rem/1 var(--font-display);display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--fg);padding:0;cursor:pointer}
+.brand i{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#000 0 38%,var(--e1) 46%,var(--e2) 62%,var(--e3) 72%,transparent 76%);display:inline-block}
+.pips{display:flex;flex-wrap:wrap;gap:6px}
+.pip{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 10px;border-radius:6px;font:12px/1 var(--font-mono);cursor:pointer}
+.pip b{width:9px;height:9px;border-radius:2px;display:inline-block}
+.pip[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pip:disabled{opacity:.45;cursor:not-allowed}
+.pip .st{color:var(--accent)}
+
+.sheet{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:28px 36px;align-items:start}
+@media (max-width:820px){.sheet{grid-template-columns:minmax(0,1fr)}}
+.brief h2{margin-bottom:14px}
+.brief .tip{font-size:.92rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-top:16px}
+.inst{display:flex;flex-direction:column;gap:14px;min-width:0}
+.screen{background:var(--screen);border:1px solid var(--screen-line);border-radius:8px;overflow:hidden;color:var(--screen-fg)}
+canvas{display:block;width:100%}
+.ctrl{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.ctrl label,.lab{font-weight:600;font-size:.95rem}
+.ctrl label .u{font-weight:400;color:var(--muted);font-size:.85rem}
+.row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.row>output{min-width:5.5em}
+input[type=range]{flex:1 1 180px;min-width:0;accent-color:var(--accent);height:28px}
+.btn{font:600 .95rem/1 var(--font-body);background:var(--accent);color:var(--accent-fg);border:0;border-radius:6px;padding:12px 18px;cursor:pointer;min-height:44px}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:.92rem;color:var(--muted);flex:1 1 200px;min-width:0}
+.msg b{color:var(--fg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:12px/1 var(--font-mono);border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:var(--surface)}
+.chip.c{border-color:var(--e1)}.chip.e{border-color:var(--e3)}
+.chip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.read{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.read div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.read small{display:block;color:var(--muted);font-size:.78rem;margin-bottom:4px}
+.read strong{font:500 1.15rem/1.1 var(--font-mono)}
+
+.debrief{margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:22px;display:grid;gap:10px}
+.debrief .stars{color:var(--accent);letter-spacing:.1em;margin-left:8px}
+.debrief ul{margin:0;padding-left:1.2em;display:grid;gap:6px;max-width:68ch}
+.debrief .src{font-size:.85rem;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.grid2 .screen small{display:block;padding:6px 10px;font:11px var(--font-mono);color:#b9a8a1;border-top:1px solid var(--screen-line)}
+.sites{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.site{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px;color:var(--fg);cursor:pointer;display:grid;gap:2px;font:inherit;min-height:44px}
+.site b{font-size:.92rem}.site small{color:var(--muted);font-size:.78rem}
+.site[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.site[aria-pressed="true"] b::before{content:"● ";color:var(--accent)}
+.meter{height:12px;border-radius:6px;background:var(--bg);border:1px solid var(--line);position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--e1),var(--e2),var(--e3));width:0;transition:width .25s}
+.meter u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--fg);text-decoration:none}
+
+.pairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.pairs{grid-template-columns:minmax(0,1fr)}}
+.pcol{display:grid;gap:8px;align-content:start}
+.pc{text-align:left;font:inherit;font-size:.9rem;line-height:1.35;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;cursor:pointer;min-height:44px}
+.pc small{display:block;color:var(--muted);font-size:.74rem;margin-top:4px;font-family:var(--font-mono)}
+.pc[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pc.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface));cursor:default}
+.pc.no{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.pc.no{animation:none;border-color:var(--bad)}.meter i{transition:none}}
+.quiz{display:grid;gap:8px}
+.q{display:grid;gap:4px;text-align:left}
+.q.right{border-color:var(--ok)}.q.wrong{border-color:var(--bad)}
+.q em{font-style:normal;font-size:.82rem;color:var(--muted)}
+
+.hero{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:28px 40px;align-items:center}
+@media (max-width:820px){.hero{grid-template-columns:minmax(0,1fr)}.hero .screen{order:-1;max-width:380px}}
+.hero h1{margin-bottom:16px}
+.hero ol{padding-left:1.2em;margin:0 0 20px;display:grid;gap:4px}
+.final{display:grid;gap:14px}
+.final table{border-collapse:collapse;width:100%;max-width:640px;font-size:.95rem}
+.final td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.final td:last-child{text-align:right;white-space:nowrap;color:var(--accent)}
+footer{margin-top:40px;font-size:.82rem;color:var(--muted);max-width:70ch}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <button class="brand" id="home" aria-label="Back to start"><i></i>Shadow Catchers</button>
+    <nav class="pips" id="pips" aria-label="Missions"></nav>
+  </header>
+  <main id="stage"></main>
+  <footer>Built from the Event Horizon Telescope Collaboration paper "First Sagittarius A* Event Horizon Telescope Results. I." (ApJL 930:L12, 2022; <a href="https://doi.org/10.3847/2041-8213/ac6674" target="_blank" rel="noopener">doi:10.3847/2041-8213/ac6674</a>). The games are simplified for play. Numbers come from the paper unless a note says they are examples.</footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s,r){return (r||document).querySelector(s)};
+var DPR=Math.min(window.devicePixelRatio||1,2);
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var COL={bg:'#0b0709',line:'#2b2023',fg:'#f4e9e1',dim:'#9d8c86',ember:'#ef6a1a',red:'#ff5a3c',gold:'#ffd98a',hot:'#ffb347'};
+var S={lv:-1,stars:[0,0,0,0,0],done:[false,false,false,false,false]};
+var stage=$('#stage'),raf=0,cleanup=null,onResize=null;
+var NAMES=['Bend','Weigh','Build','Verdict','Use'];
+var PIPC=['#5a0f08','#b3260e','#ef6a1a','#ffb347','#ffe9b0'];
+
+function fit(c,aspect){var w=c.parentElement.clientWidth||c.clientWidth||320,h=Math.round(w*aspect);c.width=Math.round(w*DPR);c.height=Math.round(h*DPR);c.style.height=h+'px';var g=c.getContext('2d');g.setTransform(DPR,0,0,DPR,0,0);return{g:g,w:w,h:h}}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function seeded(seed){return function(){seed=(seed*16807)%2147483647;return(seed-1)/2147483646}}
+function bgStars(n,seed){var r=seeded(seed),a=[];for(var i=0;i<n;i++)a.push([r(),r(),.15+r()*.5]);return a}
+function drawBgStars(g,w,h,a){for(var i=0;i<a.length;i++){g.fillStyle='rgba(244,233,225,'+a[i][2]+')';g.fillRect(a[i][0]*w,a[i][1]*h,1.2,1.2)}}
+
+/* ember colour map, same family as the EHT images */
+var STOPS=[[0,8,4,6],[.22,96,16,10],[.5,222,80,14],[.78,255,170,60],[1,255,242,205]],LUT=[];
+(function(){for(var i=0;i<256;i++){var t=i/255,k=0;while(k<STOPS.length-2&&t>STOPS[k+1][0])k++;var a=STOPS[k],b=STOPS[k+1],f=(t-a[0])/(b[0]-a[0]);LUT.push([a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f,a[3]+(b[3]-a[3])*f])}})();
+function paintField(N,field,canvas){var off=document.createElement('canvas');off.width=off.height=N;var og=off.getContext('2d'),id=og.createImageData(N,N);
+  for(var i=0;i<N*N;i++){var v=Math.max(0,Math.min(1,field[i])),c=LUT[Math.round(v*255)];id.data[i*4]=c[0];id.data[i*4+1]=c[1];id.data[i*4+2]=c[2];id.data[i*4+3]=255}
+  og.putImageData(id,0,0);var g=canvas.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(off,0,0,canvas.width/DPR,canvas.height/DPR)}
+function angd(a,b){var d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d}
+function ringField(N,span,o){var f=new Float32Array(N*N),R=o.d/2,norm=1+o.A+(o.spot||0);
+  for(var j=0;j<N;j++)for(var i=0;i<N;i++){var x=((i+.5)/N-.5)*2*span,y=((j+.5)/N-.5)*2*span,r=Math.hypot(x,y),th=Math.atan2(y,x);
+    var prof=Math.exp(-Math.pow((r-R)/o.sig,2)/2),asym=1+o.A*Math.cos(th-o.th0);
+    var spot=o.spot?o.spot*Math.exp(-Math.pow(angd(th,o.ths)/.5,2)/2)*Math.exp(-Math.pow((r-R)/(o.sig*1.2),2)/2):0;
+    var fl=o.floor*Math.exp(-Math.pow(r/(R*1.6),2));f[j*N+i]=(prof*asym+spot+fl)/norm}
+  return f}
+
+/* ---------- chrome ---------- */
+function pips(){var el=$('#pips');el.innerHTML='';for(var i=0;i<5;i++){(function(i){var b=document.createElement('button');b.className='pip';
+  var open=i===0||S.done[i-1]||S.done[i];b.disabled=!open;if(S.lv===i)b.setAttribute('aria-current','true');
+  b.innerHTML='<b style="background:'+PIPC[i]+'"></b>'+(i+1)+' '+NAMES[i]+(S.done[i]?' <span class="st">'+starStr(S.stars[i])+'</span>':'');
+  b.onclick=function(){go(i)};el.appendChild(b)})(i)}}
+function sheet(n,title,brief,inst){return '<section class="sheet"><div class="brief"><p class="eyebrow">Mission '+(n+1)+' of 5</p><h2>'+title+'</h2>'+brief+'</div><div class="inst">'+inst+'</div></section><div id="debrief" class="debrief" hidden></div>'}
+function finish(i,stars,html){S.done[i]=true;S.stars[i]=Math.max(S.stars[i],stars);pips();var d=$('#debrief');d.hidden=false;
+  d.innerHTML='<h3>Mission complete<span class="stars" aria-label="'+stars+' of 3 stars">'+starStr(stars)+'</span></h3>'+html+'<div class="actions"><button class="btn" id="next">'+(i<4?'Next mission':'See your results')+'</button></div>';
+  $('#next').onclick=function(){go(i+1)};try{d.scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'})}catch(e){}}
+function go(n){if(cleanup){cleanup();cleanup=null}cancelAnimationFrame(raf);onResize=null;S.lv=n;pips();window.scrollTo(0,0);
+  [L1,L2,L3,L4,L5,Final][n]?[L1,L2,L3,L4,L5,Final][n]():Intro()}
+$('#home').onclick=function(){if(cleanup){cleanup();cleanup=null}cancelAnimationFrame(raf);onResize=null;S.lv=-1;pips();Intro()};
+window.addEventListener('resize',function(){if(onResize)onResize()});
+
+/* ---------- intro ---------- */
+function Intro(){
+  stage.innerHTML='<section class="hero"><div><p class="eyebrow">Based on the 2022 Sgr A* results</p><h1>Shadow Catchers</h1>'+
+  '<p>In the middle of our galaxy sits a black hole with the mass of four million Suns. In 2022 a network of radio telescopes spread across the Earth gave us its first picture. Play through five short missions to see how that picture was made, and why it matters.</p>'+
+  '<ol><li>Bend light around a black hole and find the edge of its shadow.</li><li>Weigh the monster using orbiting stars.</li><li>Build a telescope as wide as the Earth.</li><li>Decide what the image says about the object at the centre.</li><li>Match the technology to what it does for everyday life.</li></ol>'+
+  '<div class="actions"><button class="btn" id="start">Start mission 1</button></div><p class="src" style="margin-top:10px;font-size:.85rem;color:var(--muted)">About 10 minutes. Works with touch or mouse.</p></div>'+
+  '<div class="screen"><canvas id="hero"></canvas></div></section>';
+  $('#start').onclick=function(){go(0)};
+  var c=$('#hero'),t0=0,N=120,frame=0;
+  function draw(){var f=fit(c,1);f.g.fillStyle=COL.bg;f.g.fillRect(0,0,f.w,f.h);
+    var th=reduce?0.9:t0;paintField(N,ringField(N,80,{d:51.8,sig:7.5,A:.35,th0:-1.9,spot:.9,ths:th,floor:.05}),c)}
+  function loop(){t0+=.012;if(!reduce&&(frame++%2===0))draw();raf=requestAnimationFrame(loop)}
+  draw();onResize=draw;if(!reduce)raf=requestAnimationFrame(loop)}
+
+/* ---------- mission 1: bend the light ---------- */
+function L1(){
+  var BC=1.5*Math.sqrt(3);
+  stage.innerHTML=sheet(0,'Find the edge of the shadow',
+   '<p>A black hole is a place where gravity is so strong that nothing, not even light, can leave. Light that passes close is bent. Light that gets too close falls in. The dark patch we see against the glowing gas is the <b>shadow</b>.</p>'+
+   '<p>Send light rays past the black hole. Each ray travels from the left, offset from the centre by <b>b</b>. Find the boundary between a ray that is captured and a ray that escapes, and narrow the gap to 0.12 Rs or less.</p>'+
+   '<p class="tip">Rs is the Schwarzschild radius, 2GM/c², the size of the event horizon. Fewer shots earn more stars.</p>',
+   '<div class="screen"><canvas id="c1"></canvas></div>'+
+   '<div class="ctrl"><label for="b">Aim offset b <span class="u">in Rs</span></label><div class="row"><input id="b" type="range" min="0.5" max="4.8" step="0.01" value="4"><output id="bv" class="mono" for="b">4.00 Rs</output></div>'+
+   '<div class="row"><button class="btn" id="fire">Fire ray</button><span class="msg" id="msg" role="status">Start with a wide offset and move inward.</span></div></div>'+
+   '<div class="chips" id="log" aria-label="Shots fired"></div>');
+  var c=$('#c1'),sl=$('#b'),bv=$('#bv'),fireB=$('#fire'),msg=$('#msg'),log=$('#log');
+  var bgs=bgStars(90,7),shots=[],anim=null,solved=false;
+  function trace(b){var R0=16,u0=1/R0,h=0.012,phi=Math.asin(b*u0),u=u0,w=Math.cos(phi)/b,pts=[[-Math.cos(phi)*R0,Math.sin(phi)*R0]],cap=false,i=0;
+    function f(u,w){return[w,-u+1.5*u*u]}
+    for(;i<9000;i++){var k1=f(u,w),k2=f(u+h/2*k1[0],w+h/2*k1[1]),k3=f(u+h/2*k2[0],w+h/2*k2[1]),k4=f(u+h*k3[0],w+h*k3[1]);
+      u+=h/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);w+=h/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);phi+=h;
+      if(u>=1){cap=true;break}
+      if(i%3===0){var r=1/u;pts.push([-r*Math.cos(phi),r*Math.sin(phi)])}
+      if(w<0&&u<=u0)break}
+    if(i>=9000)cap=b<BC;
+    var r2=1/Math.min(u,1);pts.push([-r2*Math.cos(phi),r2*Math.sin(phi)]);
+    return{b:b,pts:pts,cap:cap,defl:(phi-Math.PI)*180/Math.PI}}
+  function draw(){var f=fit(c,.62),g=f.g,w=f.w,h=f.h,sc=w/16,cx=w/2,cy=h/2;
+    g.fillStyle=COL.bg;g.fillRect(0,0,w,h);drawBgStars(g,w,h,bgs);
+    g.setLineDash([3,4]);g.strokeStyle='rgba(255,179,71,.45)';g.lineWidth=1;g.beginPath();g.arc(cx,cy,1.5*sc,0,7);g.stroke();g.setLineDash([]);
+    var gr=g.createRadialGradient(cx,cy,sc*.9,cx,cy,sc*1.6);gr.addColorStop(0,'rgba(239,106,26,.55)');gr.addColorStop(1,'rgba(239,106,26,0)');g.fillStyle=gr;g.beginPath();g.arc(cx,cy,sc*1.6,0,7);g.fill();
+    g.fillStyle='#000';g.beginPath();g.arc(cx,cy,sc,0,7);g.fill();
+    if(solved){g.setLineDash([6,5]);g.strokeStyle=COL.ember;g.lineWidth=1.5;g.beginPath();g.arc(cx,cy,BC*sc,0,7);g.stroke();g.setLineDash([]);
+      g.fillStyle=COL.hot;g.font='11px IBM Plex Mono,monospace';g.textAlign='center';g.fillText('shadow edge, b = 2.6 Rs',cx,cy+BC*sc+16)}
+    var b=parseFloat(sl.value);if(!anim){g.setLineDash([2,5]);g.strokeStyle='rgba(244,233,225,.5)';g.lineWidth=1;g.beginPath();g.moveTo(0,cy-b*sc);g.lineTo(cx,cy-b*sc);g.stroke();g.setLineDash([]);
+      g.strokeStyle='rgba(244,233,225,.35)';g.beginPath();g.moveTo(cx,cy);g.lineTo(cx,cy-b*sc);g.stroke();g.fillStyle=COL.fg;g.font='11px IBM Plex Mono,monospace';g.textAlign='left';g.fillText('b',cx+5,cy-b*sc/2)}
+    for(var s=0;s<shots.length;s++){var sh=shots[s],n=(anim&&anim.shot===sh)?Math.floor(anim.i):sh.pts.length;if(n<2)continue;
+      g.strokeStyle=sh.cap?COL.red:COL.gold;g.lineWidth=2;g.globalAlpha=.9;g.beginPath();for(var k=0;k<n;k++){var X=cx+sh.pts[k][0]*sc,Y=cy-sh.pts[k][1]*sc;k?g.lineTo(X,Y):g.moveTo(X,Y)}g.stroke();g.globalAlpha=1}
+    g.fillStyle=COL.dim;g.font='11px IBM Plex Mono,monospace';g.textAlign='left';g.fillText('dashed ring: photon orbit, 1.5 Rs',10,h-28);g.fillText('rays travel left to right',10,h-12);
+    g.strokeStyle=COL.fg;g.lineWidth=1.5;g.beginPath();g.moveTo(w-10-sc,h-16);g.lineTo(w-10,h-16);g.stroke();g.textAlign='right';g.fillText('1 Rs',w-10,h-22)}
+  function tick(){if(!anim)return;anim.i=Math.min(anim.shot.pts.length,anim.i+Math.max(2,anim.shot.pts.length/(reduce?1:50)));draw();
+    if(anim.i>=anim.shot.pts.length){var s=anim.shot;anim=null;fireB.disabled=false;land(s)}else raf=requestAnimationFrame(tick)}
+  function land(s){var chip=document.createElement('span');chip.className='chip '+(s.cap?'c':'e');chip.innerHTML='<i style="background:'+(s.cap?COL.red:COL.gold)+'"></i>'+s.b.toFixed(2)+' Rs '+(s.cap?'captured':'escaped');log.appendChild(chip);
+    var best=9,cs=shots.filter(function(x){return x.cap}),es=shots.filter(function(x){return!x.cap});
+    cs.forEach(function(a){es.forEach(function(e){if(e.b>a.b&&e.b-a.b<best)best=e.b-a.b})});
+    var txt=s.cap?'<b>Captured.</b> The ray fell in. Try a larger b.':'<b>Escaped</b>, bent by '+s.defl.toFixed(0)+'°. Try a smaller b.';
+    if(best<9)txt+=' Narrowest gap so far: '+best.toFixed(2)+' Rs.';msg.innerHTML=txt;
+    if(best<=0.12&&!solved){solved=true;draw();var n=shots.length,st=n<=8?3:n<=12?2:1;
+      msg.innerHTML='<b>Edge found</b> in '+n+' shots.';
+      finish(0,st,'<ul><li>The edge sits at b = 3√3/2 ≈ 2.6 Rs. The shadow is about 5.2 Rs wide, which is roughly 10 GM/(c²D) of angle on the sky. The paper calls this size 10θ<sub>g</sub>.</li>'+
+      '<li>Rays that pass just outside the edge are bent strongly. Rays inside it end at the event horizon.</li>'+
+      '<li>The bright ring in an image sits near the lensed photon orbit, the dashed circle. It surrounds a dark centre, the shadow.</li></ul><p class="src">From the paper, Section 1: the shadow has angular diameter d<sub>sh</sub> ≈ 10GM/(c²D) ≡ 10θ<sub>g</sub>.</p>')}}
+  sl.oninput=function(){bv.textContent=parseFloat(sl.value).toFixed(2)+' Rs';if(!anim)draw()};
+  fireB.onclick=function(){if(anim)return;var s=trace(parseFloat(sl.value));shots.push(s);anim={shot:s,i:0};fireB.disabled=true;msg.textContent='Ray in flight...';raf=requestAnimationFrame(tick)};
+  draw();onResize=draw}
+
+/* ---------- mission 2: weigh the giant ---------- */
+function L2(){
+  var A=1008,PO=16,MT=4.0,attempts=0;
+  stage.innerHTML=sheet(1,'Weigh the monster',
+   '<p>You cannot put a black hole on a scale. But stars orbit Sgr A*, and a heavier centre pulls them around faster. Astronomers track these orbits in infrared light to find the mass.</p>'+
+   '<p>The gold star is a simplified example: a circular orbit about 1,000 AU across, observed to take <b>16 years</b>. Slide the mass until your white-ringed star keeps pace with it.</p>'+
+   '<p class="tip">1 AU is the Earth–Sun distance. One real second here is one year. Sliding the mass restarts your star beside the gold one.</p>',
+   '<div class="screen"><canvas id="c2"></canvas></div>'+
+   '<div class="ctrl"><label for="m">Mass of the centre <span class="u">in millions of Suns</span></label><div class="row"><input id="m" type="range" min="0.5" max="10" step="0.01" value="1.5"><output id="mv" class="mono" for="m">1.50</output></div>'+
+   '<div class="read"><div><small>Observed period</small><strong>16.0 yr</strong></div><div><small>After one orbit your star is</small><strong id="dr">0°</strong></div></div>'+
+   '<div class="row"><button class="btn" id="lock">Lock in this mass</button><button class="btn ghost" id="pp">Pause</button><span class="msg" id="msg" role="status">Heavier centre, faster orbit.</span></div></div>');
+  var c=$('#c2'),sl=$('#m'),mv=$('#mv'),dr=$('#dr'),msg=$('#msg'),pp=$('#pp'),obs=0,sim=0,last=0,run=!reduce,done=false,bgs=bgStars(70,3);
+  pp.textContent=run?'Pause':'Play';
+  function per(){return Math.sqrt(Math.pow(A,3)/(parseFloat(sl.value)*1e6))}
+  function drift(){return 360*(PO/per()-1)}
+  function upd(){var d=drift();mv.textContent=parseFloat(sl.value).toFixed(2);dr.textContent=(Math.abs(d)<1?'0':Math.abs(d).toFixed(0))+'° '+(Math.abs(d)<1?'':d>0?'ahead':'behind')}
+  function draw(){var f=fit(c,.8),g=f.g,w=f.w,h=f.h,cx=w/2,cy=h/2,R=Math.min(w,h)*.38;g.fillStyle=COL.bg;g.fillRect(0,0,w,h);drawBgStars(g,w,h,bgs);
+    g.strokeStyle='rgba(244,233,225,.18)';g.lineWidth=1;g.beginPath();g.arc(cx,cy,R,0,7);g.stroke();
+    var gr=g.createRadialGradient(cx,cy,2,cx,cy,26);gr.addColorStop(0,'rgba(239,106,26,.9)');gr.addColorStop(1,'rgba(239,106,26,0)');g.fillStyle=gr;g.beginPath();g.arc(cx,cy,26,0,7);g.fill();g.fillStyle='#000';g.beginPath();g.arc(cx,cy,5,0,7);g.fill();
+    function star(a,col,fill,r){var x=cx+R*Math.cos(a),y=cy-R*Math.sin(a);g.strokeStyle='rgba(244,233,225,.25)';g.beginPath();g.moveTo(cx,cy);g.lineTo(x,y);g.stroke();
+      g.beginPath();g.arc(x,y,r,0,7);if(fill){g.fillStyle=col;g.fill()}else{g.strokeStyle=col;g.lineWidth=2;g.stroke()}}
+    star(obs,COL.gold,true,6);star(sim,'#fff',false,10);
+    g.fillStyle=COL.dim;g.font='11px IBM Plex Mono,monospace';g.textAlign='left';g.fillText('t = '+(obs/(2*Math.PI)*PO).toFixed(1)+' yr',10,18);g.fillText('orbit radius ≈ 1,000 AU',10,h-12);
+    g.fillStyle=COL.gold;g.fillText('● observed star',w-130,h-28);g.fillStyle='#fff';g.fillText('○ your star',w-130,h-12)}
+  function loop(t){if(!last)last=t;var dt=Math.min(.1,(t-last)/1000);last=t;if(run){obs+=2*Math.PI*dt/PO;sim+=2*Math.PI*dt/per()}draw();raf=requestAnimationFrame(loop)}
+  sl.oninput=function(){sim=obs;upd()};
+  pp.onclick=function(){run=!run;pp.textContent=run?'Pause':'Play'};
+  $('#lock').onclick=function(){if(done)return;attempts++;var M=parseFloat(sl.value),ok=Math.abs(M-MT)/MT<=.04;
+    if(ok){done=true;msg.innerHTML='<b>Locked.</b> Your star keeps pace.';var st=attempts<=1?3:attempts<=3?2:1;
+      finish(1,st,'<ul><li>Kepler’s third law gives M = a³/P² in Suns, AU and years: 1008³ / 16² ≈ 4.0 million Suns.</li>'+
+      '<li>The paper’s stellar-orbit values are 3.95 million (Keck) and 4.30 million (VLTI) Suns, at a distance of about 8 kiloparsecs.</li>'+
+      '<li>A hole this heavy has an event horizon about 12 million km in radius, or 17 times the radius of the Sun. That fits well inside Mercury’s orbit.</li>'+
+      '<li>It shines with a total power of only about 100 Suns, far below its Eddington limit. Sgr A* is a very quiet black hole.</li></ul><p class="src">From the paper, Section 2.1 and Table 1. The orbit here is a simplified example.</p>')}
+    else{var d=drift();msg.innerHTML='<b>Not yet.</b> Your star ends '+Math.abs(d).toFixed(0)+'° '+(d>0?'ahead':'behind')+'. '+(d>0?'Try a lighter centre.':'Try a heavier centre.')}};
+  upd();raf=requestAnimationFrame(loop);onResize=draw}
+
+/* ---------- mission 3: build the telescope ---------- */
+function L3(){
+  var D2R=Math.PI/180,DEC=-29*D2R,LAM=1.3e-3,RE=6371e3,AS=4.848e-12,R=25.9,NG=56,SP=75,TOTC=0,COVALL=1;
+  var SITES=[{id:'alma',n:'ALMA + APEX',p:'Chile',lat:-23.02,lon:-67.75,note:'ALMA is the most sensitive telescope in the array.'},
+   {id:'lmt',n:'LMT',p:'Mexico',lat:18.99,lon:-97.31,note:'On Volcán Sierra Negra.'},
+   {id:'smt',n:'SMT',p:'Arizona, USA',lat:32.70,lon:-109.89,note:'On Mt. Graham.'},
+   {id:'sma',n:'SMA + JCMT',p:'Hawai’i, USA',lat:19.82,lon:-155.48,note:'Two telescopes side by side on Maunakea.'},
+   {id:'pv',n:'IRAM 30 m',p:'Spain',lat:37.07,lon:-3.39,note:'On Pico Veleta. It observed Sgr A* only on April 7.'},
+   {id:'spt',n:'South Pole Telescope',p:'Antarctica',lat:-90,lon:0,note:'Sees Sgr A* the whole day and adds the longest baselines.'}];
+  var on={alma:true,smt:true},st={},bgs=bgStars(1,1);
+  stage.innerHTML=sheet(2,'Build an Earth-sized telescope',
+   '<p>The ring is about 52 millionths of an arcsecond wide, like an orange-sized object on the Moon. To see that, a single dish would need to be as wide as the Earth.</p>'+
+   '<p>The trick: link telescopes around the globe. Each pair measures one ripple pattern of the image, and longer pairs see finer detail. As the Earth turns, every pair sweeps out an arc in the <b>(u,v) plane</b> and fills in more of the picture.</p>'+
+   '<p>Switch sites on and off. Reach <b>70% of the coverage the full array gets</b> with as few sites as you can.</p>'+
+   '<p class="tip">The 2017 array had 8 telescopes at 6 sites. The wavelength was 1.3 mm. Sgr A* is visible from a site only when it is more than 12° above the horizon.</p>',
+   '<div class="screen"><canvas id="map"></canvas></div>'+
+   '<div class="sites" id="sites"></div>'+
+   '<div class="grid2"><div class="screen"><canvas id="uv"></canvas><small>(u,v) coverage, in billions of wavelengths</small></div><div class="screen"><canvas id="img"></canvas><small>Simulated picture from these sites</small></div></div>'+
+   '<div class="ctrl"><div class="row" style="justify-content:space-between"><span class="lab">Coverage vs full array</span><span class="mono" id="cv">0%</span></div><div class="meter" aria-hidden="true"><i id="mb"></i><u style="left:70%"></u></div>'+
+   '<div class="read"><div><small>Sharpest detail</small><strong id="rs">-</strong></div><div><small>Sites in use</small><strong id="ns">0</strong></div></div>'+
+   '<div class="row"><button class="btn" id="snap" aria-disabled="true">Take the picture</button><span class="msg" id="msg" role="status"></span></div></div>');
+  var S2=SITES;
+  function xyz(s){var la=s.lat*D2R,lo=s.lon*D2R;return[RE*Math.cos(la)*Math.cos(lo),RE*Math.cos(la)*Math.sin(lo),RE*Math.sin(la)]}
+  function up(s,H){return Math.sin(s.lat*D2R)*Math.sin(DEC)+Math.cos(s.lat*D2R)*Math.cos(DEC)*Math.cos(H+s.lon*D2R)>Math.sin(12*D2R)}
+  function uvp(act){var p=[];for(var i=0;i<act.length;i++)for(var j=i+1;j<act.length;j++){var a=xyz(act[i]),b=xyz(act[j]),bx=b[0]-a[0],by=b[1]-a[1],bz=b[2]-a[2];
+    for(var H=-Math.PI;H<Math.PI;H+=3*D2R){if(!up(act[i],H)||!up(act[j],H))continue;var sH=Math.sin(H),cH=Math.cos(H);
+      var u=(sH*bx+cH*by)/LAM/1e9,v=(-Math.sin(DEC)*cH*bx+Math.sin(DEC)*sH*by+Math.cos(DEC)*bz)/LAM/1e9;p.push([u,v],[-u,-v])}}return p}
+  function J0(x){x=Math.abs(x);if(x<8){var y=x*x;return(57568490574-y*(13362590354-y*(651619640.7-y*(11214424.18-y*(77392.33017-y*184.9052456)))))/(57568490411+y*(1029532985+y*(9494680.718+y*(59272.64853+y*(267.8532712+y)))))}
+    var z=8/x,y2=z*z,xx=x-.785398164;return Math.sqrt(.636619772/x)*(Math.cos(xx)*(1-y2*(.1098628627e-2-y2*(.2734510407e-4-y2*(.2073370639e-5-y2*.2093887211e-6))))-z*Math.sin(xx)*(.04687499995-y2*(.2002690873e-3-y2*(.8449199096e-5-y2*(.88228987e-6-y2*.105787412e-6)))))}
+  function Vt(q){return J0(2*Math.PI*R*AS*q*1e9)*Math.exp(-Math.pow(Math.PI*23*AS*q*1e9,2)/(4*Math.log(2)))}
+  function cells(p){var set={},n=0;for(var i=0;i<p.length;i++){var u=p[i][0],v=p[i][1];if(Math.hypot(u,v)<=9){var k=Math.round(u)+','+Math.round(v);if(!set[k]){set[k]=1;n++}}}return n}
+  (function(){for(var i=-12;i<=12;i++)for(var j=-12;j<=12;j++)if(Math.hypot(i,j)<=9)TOTC++;COVALL=cells(uvp(S2))/TOTC})();
+  function cleanField(sig){var f=new Float32Array(NG*NG),mx=0;for(var j=0;j<NG;j++)for(var i=0;i<NG;i++){var x=((i+.5)/NG-.5)*2*SP,y=((j+.5)/NG-.5)*2*SP,s=0;
+    for(var a=0;a<90;a++){var t=a/90*2*Math.PI,dx=x-R*Math.cos(t),dy=y-R*Math.sin(t);s+=Math.exp(-(dx*dx+dy*dy)/(2*sig*sig))}f[j*NG+i]=s;if(s>mx)mx=s}
+    for(var n=0;n<f.length;n++)f[n]/=mx;return f}
+  function dirtyField(p){var img=new Float32Array(NG*NG),k=2*Math.PI*AS*1e9,K=p.length,w=[],V=[],QC=9;
+    for(var n=0;n<K;n++){var q=Math.hypot(p[n][0],p[n][1]);w.push(Math.exp(-q*q/(QC*QC)));V.push(Vt(q))}
+    var mx=0;for(var j=0;j<NG;j++)for(var i=0;i<NG;i++){var x=((i+.5)/NG-.5)*2*SP,y=((j+.5)/NG-.5)*2*SP,s=K*.05;for(var m=0;m<K;m++)s+=w[m]*V[m]*Math.cos(k*(p[m][0]*x+p[m][1]*y));if(s<0)s=0;img[j*NG+i]=s;if(s>mx)mx=s}
+    for(var n2=0;n2<img.length;n2++)img[n2]/=mx||1;return img}
+  function compute(){var act=S2.filter(function(s){return on[s.id]}),p=uvp(act),qmax=0;for(var i=0;i<p.length;i++){var q=Math.hypot(p[i][0],p[i][1]);if(q>qmax)qmax=q}
+    var cov=p.length?cells(p)/TOTC/COVALL:0;st={act:act,p:p,qmax:qmax,cov:cov,res:qmax?1/(qmax*1e9)/AS:0,img:null};
+    if(act.length>=2&&p.length){var sig=Math.sqrt(Math.pow(23/2.355,2)+Math.pow(Math.max(7,st.res*.4),2)),cl=cleanField(sig),a=Math.max(0,Math.min(1,1-cov*1.15)),f=cl;
+      if(a>.02){var d=dirtyField(p);f=new Float32Array(NG*NG);var mx=0;for(var n=0;n<f.length;n++){f[n]=(1-a)*cl[n]+a*d[n]*.9;if(f[n]>mx)mx=f[n]}for(var n3=0;n3<f.length;n3++)f[n3]/=mx}
+      st.img=f}}
+  function drawMap(){var c=$('#map'),f=fit(c,.46),g=f.g,w=f.w,h=f.h;g.fillStyle=COL.bg;g.fillRect(0,0,w,h);g.strokeStyle='rgba(244,233,225,.1)';g.lineWidth=1;
+    for(var lo=-180;lo<=180;lo+=30){var x=(lo+180)/360*w;g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}for(var la=-90;la<=90;la+=30){var y=(90-la)/180*h;g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke()}
+    function P(s){return[(s.lon+180)/360*w,(90-s.lat)/180*h]}
+    g.strokeStyle='rgba(255,179,71,.45)';for(var i=0;i<st.act.length;i++)for(var j=i+1;j<st.act.length;j++){var a=P(st.act[i]),b=P(st.act[j]);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+    g.font='10px IBM Plex Mono,monospace';S2.forEach(function(s){var q=P(s),o=!!on[s.id];g.fillStyle=o?COL.ember:'#5a4a46';g.beginPath();g.arc(q[0],q[1],o?5:3.5,0,7);g.fill();
+      g.fillStyle=o?COL.fg:COL.dim;g.textAlign=q[0]>w-90?'right':'left';g.fillText(s.n.split(' ')[0],q[0]+(q[0]>w-90?-8:8),Math.min(h-6,q[1]+(s.id==='spt'?-8:4)))});
+    g.fillStyle=COL.dim;g.textAlign='left';g.fillText('Earth, flat map. Lines join active sites.',8,12)}
+  function drawUV(){var c=$('#uv'),f=fit(c,1),g=f.g,w=f.w,h=f.h,cx=w/2,cy=h/2,sc=(w/2)/10.4;g.fillStyle=COL.bg;g.fillRect(0,0,w,h);
+    g.strokeStyle='rgba(244,233,225,.15)';g.beginPath();g.moveTo(0,cy);g.lineTo(w,cy);g.moveTo(cx,0);g.lineTo(cx,h);g.stroke();
+    [3.0,6.5].forEach(function(r){g.setLineDash([3,4]);g.strokeStyle='rgba(255,179,71,.5)';g.beginPath();g.arc(cx,cy,r*sc,0,7);g.stroke();g.setLineDash([])});
+    g.fillStyle=COL.dim;g.font='10px IBM Plex Mono,monospace';g.textAlign='left';g.fillText('3.0',cx+3*sc*.72+3,cy-3*sc*.72-3);g.fillText('6.5',cx+6.5*sc*.72+3,cy-6.5*sc*.72-3);
+    g.fillStyle='rgba(239,106,26,.85)';for(var i=0;i<st.p.length;i++){g.fillRect(cx+st.p[i][0]*sc-.9,cy-st.p[i][1]*sc-.9,1.8,1.8)}
+    if(!st.p.length){g.fillStyle=COL.dim;g.textAlign='center';g.fillText('Pick at least two sites',cx,cy+30)}}
+  function drawImg(){var c=$('#img'),f=fit(c,1),g=f.g;g.fillStyle=COL.bg;g.fillRect(0,0,f.w,f.h);
+    if(st.img){paintField(NG,st.img,c)}else{g.fillStyle=COL.dim;g.font='11px IBM Plex Mono,monospace';g.textAlign='center';g.fillText('No picture yet',f.w/2,f.h/2)}
+    g.strokeStyle='rgba(244,233,225,.7)';g.lineWidth=1.5;var L=50/(2*SP)*f.w;g.beginPath();g.moveTo(10,f.h-12);g.lineTo(10+L,f.h-12);g.stroke();g.fillStyle=COL.fg;g.font='10px IBM Plex Mono,monospace';g.textAlign='left';g.fillText('50 µas',10,f.h-17)}
+  function ui(){var pc=Math.round(st.cov*100);$('#cv').textContent=pc+'%';$('#mb').style.width=Math.min(100,pc)+'%';$('#rs').textContent=st.res?Math.round(st.res)+' µas':'-';$('#ns').textContent=st.act.length;
+    var ok=st.cov>=.7;var b=$('#snap');b.setAttribute('aria-disabled',ok?'false':'true');$('#msg').textContent=ok?'Enough coverage. Take the picture.':st.act.length<2?'You need at least two sites.':'Keep adding sites. Which ones give the longest baselines?'}
+  function all(){compute();drawMap();drawUV();drawImg();ui()}
+  var sw=$('#sites');S2.forEach(function(s){var b=document.createElement('button');b.className='site';b.setAttribute('aria-pressed',on[s.id]?'true':'false');b.innerHTML='<b>'+s.n+'</b><small>'+s.p+'</small>';
+    b.onclick=function(){on[s.id]=!on[s.id];b.setAttribute('aria-pressed',on[s.id]?'true':'false');$('#msg').textContent=s.note;all();setTimeout(function(){ui();if(on[s.id])$('#msg').textContent=s.note+' '+$('#msg').textContent},0)};sw.appendChild(b)});
+  $('#snap').onclick=function(){if(st.cov<.7){$('#msg').textContent='Coverage is '+Math.round(st.cov*100)+'%. You need 70%.';return}var n=st.act.length,stars=n<=4?3:n<=5?2:1;
+    finish(2,stars,'<ul><li>You used '+n+' sites. Your sharpest detail is '+Math.round(st.res)+' µas. With the paper’s array the longest baselines give a fringe spacing of 1/|u| ≈ 24 µas, which sets the EHT’s resolution.</li>'+
+    '<li>Two dark rings in a ring-shaped source show up in the (u,v) data near 3.0 and 6.5 billion wavelengths. They are the dashed circles on your plot, and they pin down the ring diameter of about 50 to 60 µas.</li>'+
+    '<li>The South Pole Telescope made the coverage for Sgr A* much better than for M87*.</li>'+
+    '<li>Sgr A* flickers within minutes, so the team built new imaging methods that treat the changes as extra noise.</li></ul><p class="src">From the paper, Sections 3 to 5. The picture here is a simulation for play. It blends an ideal ring with raw artefacts, in proportion to the coverage you reached. Real analyses use CLEAN, regularized maximum likelihood and Bayesian imaging.</p>')};
+  all();onResize=all}
+
+/* ---------- mission 4: verdict ---------- */
+function L4(){
+  var attempts=0,solved=false,DPM=12.11;
+  stage.innerHTML=sheet(3,'What is at the centre?',
+   '<p>The image gives a ring with a dark middle. Does it agree with what the stars say? The size of a black hole’s shadow depends on its mass and distance. If the mass from stars is right, the shadow should land inside the ring.</p>'+
+   '<p>Slide the mass until the dashed circle, the predicted shadow, sits inside the measured ring. The EHT measured a shadow of <b>48.7 ± 7.0 µas</b>.</p>',
+   '<div class="screen"><canvas id="c4"></canvas></div>'+
+   '<div class="ctrl"><label for="mm">Test mass <span class="u">in millions of Suns, at 8.15 kpc</span></label><div class="row"><input id="mm" type="range" min="1" max="8" step="0.01" value="2.2"><output id="mmv" class="mono" for="mm">2.20</output></div>'+
+   '<div class="read"><div><small>Predicted shadow</small><strong id="pd">-</strong></div><div><small>Measured shadow</small><strong>48.7 ± 7.0 µas</strong></div></div>'+
+   '<div class="row"><button class="btn" id="cmp">Compare with the image</button><span class="msg" id="msg" role="status"></span></div></div>'+
+   '<div class="ctrl" id="quizbox" hidden><div class="lab">Verdict: which of these does the image rule out?</div><p class="msg" style="max-width:none">Stellar orbits gave 3.95 and 4.30 million Suns, so two very different methods agree. Select every idea the paper says the image excludes, then submit.</p><div class="quiz" id="quiz"></div><div class="row"><button class="btn" id="sub">Submit verdict</button><span class="msg" id="qm" role="status"></span></div></div>');
+  var c=$('#c4'),sl=$('#mm'),mv=$('#mmv'),pd=$('#pd'),msg=$('#msg');
+  function pred(){return DPM*parseFloat(sl.value)}
+  function draw(){var f=fit(c,.72),g=f.g,w=f.w,h=f.h,sc=w/160,cx=w/2,cy=h/2;g.fillStyle=COL.bg;g.fillRect(0,0,w,h);
+    var N=100,fld=ringField(N,80,{d:51.8,sig:7.5,A:.3,th0:-1.9,spot:.5,ths:2.2,floor:.05}),off=document.createElement('canvas');off.width=off.height=N;var og=off.getContext('2d'),id=og.createImageData(N,N);
+    for(var i=0;i<N*N;i++){var v=Math.max(0,Math.min(1,fld[i])),col=LUT[Math.round(v*255)];id.data[i*4]=col[0];id.data[i*4+1]=col[1];id.data[i*4+2]=col[2];id.data[i*4+3]=255}
+    og.putImageData(id,0,0);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';var side=160*sc;g.drawImage(off,cx-side/2,cy-side/2,side,side);
+    var d=pred(),r=d/2*sc;g.setLineDash([7,5]);g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(cx,cy,r,0,7);g.stroke();g.setLineDash([]);
+    g.strokeStyle='rgba(255,255,255,.85)';g.beginPath();g.moveTo(cx-r,cy);g.lineTo(cx+r,cy);g.stroke();g.fillStyle='#fff';g.font='11px IBM Plex Mono,monospace';g.textAlign='center';g.fillText(d.toFixed(1)+' µas',cx,cy-8);
+    g.textAlign='left';g.fillStyle=COL.dim;g.fillText('measured ring: 51.8 µas',10,h-10);g.textAlign='right';g.fillText('dashed: predicted shadow',w-10,h-10);}
+  function upd(){mv.textContent=parseFloat(sl.value).toFixed(2);pd.textContent=pred().toFixed(1)+' µas';draw()}
+  sl.oninput=upd;
+  $('#cmp').onclick=function(){attempts++;var d=pred();if(d>=41.7&&d<=55.7){solved=true;msg.innerHTML='<b>It fits.</b> A mass of '+parseFloat(sl.value).toFixed(2)+' million Suns gives a shadow inside the measured range.';$('#quizbox').hidden=false;$('#cmp').disabled=true;sl.disabled=true;try{$('#quizbox').scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'})}catch(e){}}
+    else msg.innerHTML='<b>Not yet.</b> The predicted shadow is '+(d<41.7?'too small. Try a heavier mass.':'too large. Try a lighter mass.')};
+  var Q=[{id:'a',t:'A traversable wormhole (Morris–Thorne)',x:true,e:'Ruled out. It predicts a shadow much smaller than a black hole’s.'},
+   {id:'b',t:'A naked singularity (Reissner–Nordström)',x:true,e:'Ruled out. It also predicts a much smaller shadow.'},
+   {id:'c',t:'A hard surface that re-radiates falling gas',x:true,e:'Ruled out. It would glow in infrared far brighter than Sgr A* does.'},
+   {id:'d',t:'Every possible horizonless black hole mimicker',x:false,e:'Not ruled out. Some mimickers produce shadows consistent with the image.'},
+   {id:'e',t:'A spinning (Kerr) black hole',x:false,e:'Not ruled out. The images match its expected appearance.'}];
+  var qb=$('#quiz'),sel={};Q.forEach(function(q){var b=document.createElement('button');b.className='pc q';b.setAttribute('aria-pressed','false');b.innerHTML='<span>'+q.t+'</span><em hidden></em>';
+    b.onclick=function(){if(b.dataset.lock)return;sel[q.id]=!sel[q.id];b.setAttribute('aria-pressed',sel[q.id]?'true':'false')};q.el=b;qb.appendChild(b)});
+  $('#sub').onclick=function(){if($('#sub').disabled)return;var errs=0;Q.forEach(function(q){var picked=!!sel[q.id],right=picked===q.x;if(!right)errs++;q.el.dataset.lock='1';q.el.classList.add(right?'right':'wrong');var em=q.el.querySelector('em');em.hidden=false;em.textContent=(right?'Correct. ':'Check this one. ')+q.e});
+    $('#sub').disabled=true;var st=errs===0?3:errs===1?2:1;$('#qm').textContent=errs===0?'All correct.':errs+' to check.';
+    finish(3,st,'<ul><li>The ring is 51.8 ± 2.3 µas across, with a dim interior. Its size matches the mass from stellar orbits, with no tuning.</li>'+
+    '<li>The paper says the data disfavour a black hole seen nearly edge-on (inclination above 50°), a non-spinning black hole, and gas orbiting against the spin.</li>'+
+    '<li>Sgr A* is about 1,500 times lighter than M87*, yet both images fit the same prediction. General relativity holds over three orders of magnitude in mass.</li></ul><p class="src">From the paper, Sections 6 and 7 and the abstract. The paper says the dark centre supports an event horizon, while some horizonless mimickers remain possible.</p>')};
+  upd();onResize=draw}
+
+/* ---------- mission 5: use ---------- */
+function L5(){
+  var T=[{id:'maser',t:'Hydrogen-maser clocks keeping every telescope in step'},{id:'vlbi',t:'Telescopes linked across the whole Earth (VLBI)'},{id:'img',t:'Rebuilding a picture from sparse, noisy measurements'},{id:'data',t:'Recording 32 GB every second at each telescope'},{id:'sim',t:'Supercomputer simulations of hot, magnetised gas'}];
+  var U=[{id:'sim',t:'Plasma research for fusion energy and space-weather forecasts'},{id:'maser',t:'Precise timing for navigation, telecom and power networks'},{id:'data',t:'Handling huge datasets in science, medicine and industry'},{id:'vlbi',t:'Tracking Earth’s spin and drifting continents, which keeps satellite navigation accurate'},{id:'img',t:'Sharper medical, radar and seismic images from limited data'}];
+  stage.innerHTML=sheet(4,'Why it matters at home',
+   '<p>Nobody needs a black hole photo to get to work. But building the Earth-sized telescope took tools that reach well beyond astronomy.</p>'+
+   '<p>Tap a technology on the left, then tap what it helps with on the right. Five matches complete the mission.</p>'+
+   '<p class="tip">The technologies on the left appear in the paper. The everyday uses on the right are general knowledge, not claims made by the paper.</p>',
+   '<div class="pairs"><div class="pcol" id="tl"></div><div class="pcol" id="ul"></div></div><div class="ctrl"><div class="row"><span class="msg" id="msg" role="status">Choose a technology first.</span></div></div>');
+  var cur=null,mist=0,got=0;
+  function mk(list,host,side){list.forEach(function(it){var b=document.createElement('button');b.className='pc';b.setAttribute('aria-pressed','false');b.textContent=it.t;b.dataset.id=it.id;
+    b.onclick=function(){if(b.classList.contains('ok'))return;
+      if(side==='t'){cur&&cur.setAttribute('aria-pressed','false');cur=b;b.setAttribute('aria-pressed','true');$('#msg').textContent='Now choose what it helps with.';return}
+      if(!cur){$('#msg').textContent='Choose a technology on the left first.';return}
+      if(cur.dataset.id===b.dataset.id){cur.classList.add('ok');b.classList.add('ok');cur.setAttribute('aria-pressed','false');cur=null;got++;$('#msg').innerHTML='<b>Match.</b> '+got+' of 5.';
+        if(got===5){var st=mist<=1?3:mist<=3?2:1;finish(4,st,'<ul><li><b>Time:</b> hydrogen masers keep clocks steady enough to line up recordings from different continents.</li><li><b>Earth:</b> the same long-baseline method measures how our planet turns and how continents drift.</li>'+
+          '<li><b>Pictures:</b> recovering an image from incomplete data is a problem shared with medical scanners and radar.</li><li><b>Data and simulation:</b> moving huge recordings and simulating magnetised plasma are skills used well outside astronomy.</li>'+
+          '<li><b>Fundamental physics:</b> the image checks Einstein’s general relativity near a black hole, in a place no lab can reach.</li></ul><p class="src">Mistakes: '+mist+'. The technologies are from the paper (32 GB per second recording, hydrogen masers, imaging methods, GRMHD simulations). The uses are examples from general knowledge.</p>')}}
+      else{mist++;b.classList.remove('no');void b.offsetWidth;b.classList.add('no');$('#msg').textContent='Not that one. Try another use.'}};
+    host.appendChild(b)})}
+  mk(T,$('#tl'),'t');mk(U,$('#ul'),'u')}
+
+/* ---------- final ---------- */
+function Final(){
+  var tot=S.stars.reduce(function(a,b){return a+b},0),facts=['Shadow edge at about 2.6 Rs','About 4 million Suns','24 µas resolution, 8 telescopes','Ring of 51.8 µas, a Kerr black hole fits','Tools that reach beyond astronomy'];
+  var rows='';for(var i=0;i<5;i++)rows+='<tr><td>'+(i+1)+'. '+NAMES[i]+'</td><td>'+facts[i]+'</td><td>'+starStr(S.stars[i])+'</td></tr>';
+  stage.innerHTML='<section class="final"><p class="eyebrow">Results</p><h2>You caught the shadow</h2><p>You scored '+tot+' of 15 stars. A black hole four million times the mass of the Sun sits at the heart of our galaxy. We now have a picture of it, and it matches what Einstein’s theory predicts.</p>'+
+  '<div style="overflow-x:auto"><table>'+rows+'</table></div><div class="actions"><button class="btn" id="again">Play again</button><a class="btn ghost" style="text-decoration:none;display:inline-flex;align-items:center" href="https://doi.org/10.3847/2041-8213/ac6674" target="_blank" rel="noopener">Read the paper</a></div></section>';
+  $('#again').onclick=function(){S.stars=[0,0,0,0,0];S.done=[false,false,false,false,false];S.lv=-1;pips();Intro()}}
+
+pips();Intro();
+})();
+</script>
+
+</body></html>
